@@ -1,0 +1,93 @@
+{
+  "header": {
+    "title": "DigiTwin",
+    "subtitle": ""
+  },
+  "sidebar": {
+    "projects": "Projekte",
+    "projectCount": "{{count}} Projekt",
+    "projectCount_plural": "{{count}} Projekte",
+    "noProjects": "Keine Projekte entsprechen Ihren Filtern.",
+    "loading": "Projekte werden geladen...",
+    "error": "Projekte konnten nicht geladen werden."
+  },
+  "filters": {
+    "title": "Filter",
+    "all": "Alle",
+    "type": "Typ",
+    "status": "Status",
+    "year": "Jahr",
+    "search": "Projekte suchen...",
+    "clear": "Filter zurücksetzen"
+  },
+  "types": {
+    "architecture": "Architektur",
+    "infrastructure": "Infrastruktur",
+    "urban_planning": "Stadtplanung"
+  },
+  "status": {
+    "completed": "Abgeschlossen",
+    "ongoing": "Laufend",
+    "planned": "Geplant"
+  },
+  "project": {
+    "client": "Auftraggeber",
+    "type": "Typ",
+    "status": "Status",
+    "location": "Standort",
+    "completedDate": "Abgeschlossen",
+    "area": "Fläche",
+    "areaSqm": "{{value}} m²",
+    "tags": "Schlagwörter",
+    "viewOnMap": "Auf Karte anzeigen",
+    "images": "Fotos",
+    "noDescription": "Keine Beschreibung vorhanden.",
+    "readMore": "Mehr lesen",
+    "readLess": "Weniger lesen",
+    "featured": "Ausgewähltes Projekt",
+    "address": "Adresse",
+    "coordinates": "Koordinaten",
+    "addedOn": "Hinzugefügt am",
+    "layers": "Ebenen"
+  },
+  "map": {
+    "resetView": "Ansicht zurücksetzen",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "searchPlaceholder": "Standort suchen."
+  },
+  "scrape": {
+    "title": "KI-Autobefüllung per URL",
+    "subtitle": "Projekt-URL einfügen",
+    "placeholder": "https://www.str-ucture.com/projekte/...",
+    "processButton": "Verarbeiten",
+    "stageFetching": "Seite wird geladen…",
+    "stageAnalyzing": "KI analysiert…",
+    "stageImages": "Bilder werden verarbeitet…",
+    "stageGeocoding": "Adresse wird geocodiert…",
+    "extractionComplete": "Extraktion abgeschlossen",
+    "partialWarning": "einige Schritte hatten Fehler",
+    "selectFieldsHint": "Felder auswählen, die übernommen werden sollen:",
+    "selectAll": "Alle auswählen",
+    "selectNone": "Keine",
+    "discard": "Verwerfen",
+    "applySelected": "Ausgewählte übernehmen ({{count}})",
+    "firstImageThumbnail": "Erstes Bild (hervorgehoben) → Vorschaubild",
+    "imagesFound": "Bilder ({{count}} gefunden)",
+    "willBeThumbnail": "Wird als Vorschaubild verwendet",
+    "fieldsNameEn": "Name (EN)",
+    "fieldsNameDe": "Name (DE)",
+    "fieldsType": "Typ",
+    "fieldsStatus": "Status",
+    "fieldsClient": "Auftraggeber",
+    "fieldsAddress": "Adresse",
+    "fieldsCity": "Stadt",
+    "fieldsCoordinates": "Koordinaten",
+    "fieldsCompletionDate": "Fertigstellungsdatum",
+    "fieldsArea": "Fläche (m²)",
+    "fieldsDescriptionEn": "Beschreibung (EN)",
+    "fieldsDescriptionDe": "Beschreibung (DE)",
+    "fieldsTags": "Schlagwörter",
+    "fieldsImages": "Bilder"
+  }
+}

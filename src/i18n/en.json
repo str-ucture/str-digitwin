@@ -1,0 +1,93 @@
+{
+  "header": {
+    "title": "DigiTwin",
+    "subtitle": ""
+  },
+  "sidebar": {
+    "projects": "Projects",
+    "projectCount": "{{count}} project",
+    "projectCount_plural": "{{count}} projects",
+    "noProjects": "No projects match your filters.",
+    "loading": "Loading projects...",
+    "error": "Failed to load projects."
+  },
+  "filters": {
+    "title": "Filter",
+    "all": "All",
+    "type": "Type",
+    "status": "Status",
+    "year": "Year",
+    "search": "Search projects...",
+    "clear": "Clear filters"
+  },
+  "types": {
+    "architecture": "Architecture",
+    "infrastructure": "Infrastructure",
+    "urban_planning": "Urban Planning"
+  },
+  "status": {
+    "completed": "Completed",
+    "ongoing": "Ongoing",
+    "planned": "Planned"
+  },
+  "project": {
+    "client": "Client",
+    "type": "Type",
+    "status": "Status",
+    "location": "Location",
+    "completedDate": "Completed",
+    "area": "Area",
+    "areaSqm": "{{value}} m²",
+    "tags": "Tags",
+    "viewOnMap": "View on map",
+    "images": "Photos",
+    "noDescription": "No description available.",
+    "readMore": "Read more",
+    "readLess": "Read less",
+    "featured": "Featured Project",
+    "address": "Address",
+    "coordinates": "Coordinates",
+    "addedOn": "Added on",
+    "layers": "Layers"
+  },
+  "map": {
+    "resetView": "Reset view",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "searchPlaceholder": "Search location."
+  },
+  "scrape": {
+    "title": "AI Auto-populate from URL",
+    "subtitle": "paste a project page URL",
+    "placeholder": "https://www.str-ucture.com/projekte/...",
+    "processButton": "Process",
+    "stageFetching": "Fetching page…",
+    "stageAnalyzing": "Analyzing with AI…",
+    "stageImages": "Processing images…",
+    "stageGeocoding": "Geocoding address…",
+    "extractionComplete": "Extraction complete",
+    "partialWarning": "some steps had errors",
+    "selectFieldsHint": "Select fields to apply to the form:",
+    "selectAll": "Select all",
+    "selectNone": "None",
+    "discard": "Discard",
+    "applySelected": "Apply selected ({{count}})",
+    "firstImageThumbnail": "First image (highlighted) → thumbnail",
+    "imagesFound": "Images ({{count}} found)",
+    "willBeThumbnail": "Will be used as thumbnail",
+    "fieldsNameEn": "Name (EN)",
+    "fieldsNameDe": "Name (DE)",
+    "fieldsType": "Type",
+    "fieldsStatus": "Status",
+    "fieldsClient": "Client",
+    "fieldsAddress": "Address",
+    "fieldsCity": "City",
+    "fieldsCoordinates": "Coordinates",
+    "fieldsCompletionDate": "Completion date",
+    "fieldsArea": "Area (m²)",
+    "fieldsDescriptionEn": "Description (EN)",
+    "fieldsDescriptionDe": "Description (DE)",
+    "fieldsTags": "Tags",
+    "fieldsImages": "Images"
+  }
+}

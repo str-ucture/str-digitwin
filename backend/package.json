@@ -1,0 +1,6 @@
+{
+  "name": "str-digitwin-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend utilities: seed scripts, migration helpers. Dependencies are managed by the root package.json — run `npm install` from the project root."
+}
