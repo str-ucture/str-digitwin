@@ -110,7 +110,7 @@ export default function MapView({
       bearing: DEFAULT_BEARING,
       transformStyle: transformStyleFonts,
       transformRequest: transformRequestFonts,
-    })
+    } as any)
 
     map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), 'top-right')
     map.addControl(new mapboxgl.ScaleControl({ unit: 'metric' }), 'bottom-right')

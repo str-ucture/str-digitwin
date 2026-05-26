@@ -3,6 +3,7 @@ import HomePage from './pages/HomePage'
 import AdminPage from './pages/AdminPage'
 import ModelProcessorPage from './pages/ModelProcessorPage'
 import ModelViewerPage from './pages/ModelViewerPage'
+import DesignSystemPage from './pages/DesignSystemPage'
 import LoginPage from './pages/LoginPage'
 import RequireAuth from './components/UI/RequireAuth'
 import { AuthProvider } from './lib/authContext'
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
           <Route path="/model-processor" element={<RequireAuth><ModelProcessorPage /></RequireAuth>} />
           <Route path="/model-viewer" element={<RequireAuth><ModelViewerPage /></RequireAuth>} />
+          <Route path="/design-system" element={<RequireAuth><DesignSystemPage /></RequireAuth>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

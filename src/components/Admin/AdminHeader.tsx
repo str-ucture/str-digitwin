@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 interface AdminHeaderProps {
-  activeTab: 'admin' | 'viewer' | 'processor'
+  activeTab: 'admin' | 'viewer' | 'processor' | 'design-system'
   loading?: boolean
   projectCount?: number
 }
@@ -72,6 +72,20 @@ export default function AdminHeader({ activeTab, loading = false, projectCount =
               d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
           </svg>
           Model Processor
+        </Link>
+        <Link
+          to="/design-system"
+          className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+            activeTab === 'design-system'
+              ? 'text-brand-700 bg-brand-50 border border-brand-100 font-semibold shadow-sm'
+              : 'text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+          }`}
+          title="Browse design system components and styling tokens"
+        >
+          <svg className={`w-4 h-4 ${activeTab === 'design-system' ? 'text-brand-600' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+          </svg>
+          Design System
         </Link>
       </div>
     </div>

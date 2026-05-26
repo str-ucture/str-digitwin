@@ -8,6 +8,7 @@ import Toast, { useToast } from '../components/Admin/Toast'
 import AdminHeader from '../components/Admin/AdminHeader'
 import AdminSearchBar from '../components/Admin/AdminSearchBar'
 import ProjectTable from '../components/Admin/ProjectTable'
+import ProjectGrid from '../components/Admin/ProjectGrid'
 import Header from '../components/UI/Header'
 
 export default function AdminPage() {
@@ -16,6 +17,7 @@ export default function AdminPage() {
   const [editing, setEditing] = useState<Project | 'new' | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
 
   const filtered = projects.filter(p => {
     const q = search.toLowerCase()
@@ -76,6 +78,8 @@ export default function AdminPage() {
           resultsCount={filtered.length}
           showResultsCount={!!search}
           onAddProject={() => setEditing('new')}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
 
         {loading ? (
@@ -87,8 +91,17 @@ export default function AdminPage() {
             <p className="text-sm text-red-600 font-medium">Failed to load projects</p>
             <p className="text-xs text-red-400 mt-1">{error}</p>
           </div>
-        ) : (
+        ) : viewMode === 'table' ? (
           <ProjectTable
+            projects={filtered}
+            onEdit={setEditing}
+            onDelete={setDeletingId}
+            onToggleVisible={handleToggleVisible}
+            onAddNew={() => setEditing('new')}
+            isSearching={!!search}
+          />
+        ) : (
+          <ProjectGrid
             projects={filtered}
             onEdit={setEditing}
             onDelete={setDeletingId}

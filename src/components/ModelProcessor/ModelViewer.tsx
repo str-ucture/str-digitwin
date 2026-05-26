@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import * as THREE from 'three'
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { SceneMetadata } from './types'
+import { BUTTON_STYLES } from '../../styles/designSystem'
 
 export function extractSceneMetadata(gltf: GLTF): SceneMetadata {
   let meshCount = 0, vertexCount = 0, triangleCount = 0
@@ -589,7 +590,7 @@ export default function ModelViewer({
       {url && (
         <button
           onClick={frameExtents}
-          className="absolute right-3 bottom-3 z-10 px-2.5 py-1.5 bg-white/90 hover:bg-white text-gray-700 hover:text-gray-900 text-[11px] font-medium rounded-lg shadow border border-gray-200/80 backdrop-blur-sm transition-all flex items-center gap-1.5 cursor-pointer select-none"
+          className={BUTTON_STYLES.secondary + " !absolute !right-3 !bottom-3 !z-10 !px-2.5 !py-1.5 !text-[11px] !bg-white/90 hover:!bg-white !backdrop-blur-sm !shadow"}
           title="Reset camera view to fit the model perfectly"
         >
           <svg className="w-3.5 h-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">

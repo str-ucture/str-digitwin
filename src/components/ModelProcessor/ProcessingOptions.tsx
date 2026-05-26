@@ -1,4 +1,5 @@
 import type { ProcessingConfig } from './types'
+import { PANEL_STYLES, TYPOGRAPHY_STYLES, INPUT_STYLES } from '../../styles/designSystem'
 
 const LOD_OPTIONS: { value: ProcessingConfig['lod']; label: string; desc: string }[] = [
   {
@@ -26,11 +27,11 @@ interface Props {
 
 export default function ProcessingOptions({ config, onChange, disabled }: Props) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-4">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Processing options</p>
+    <div className={`${PANEL_STYLES.card} !p-4 space-y-4`}>
+      <p className={TYPOGRAPHY_STYLES.cardHeader}>Processing options</p>
 
       <div>
-        <p className="text-xs font-medium text-gray-600 mb-2">Level of Detail</p>
+        <p className={TYPOGRAPHY_STYLES.label + ' mb-2'}>Level of Detail</p>
         <div className="space-y-2">
           {LOD_OPTIONS.map(opt => (
             <label
@@ -60,7 +61,7 @@ export default function ProcessingOptions({ config, onChange, disabled }: Props)
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1.5">
+        <label className={INPUT_STYLES.label}>
           Scale factor
         </label>
         <div className="flex items-center gap-2">
@@ -72,7 +73,7 @@ export default function ProcessingOptions({ config, onChange, disabled }: Props)
             value={config.scale}
             onChange={e => onChange({ ...config, scale: parseFloat(e.target.value) || 1 })}
             disabled={disabled}
-            className="w-28 px-3 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 disabled:opacity-50 font-mono"
+            className={`${INPUT_STYLES.text} w-28 font-mono`}
           />
           <span className="text-xs text-gray-500">
             {config.scale === 1 ? 'no change' : config.scale > 1 ? `×${config.scale} (larger)` : `×${config.scale} (smaller)`}

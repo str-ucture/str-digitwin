@@ -121,12 +121,12 @@ export function transformStyleFonts(_prev: any, next: any): any {
  */
 export function transformRequestFonts(
   url: string,
-  resourceType: string,
-): mapboxgl.RequestParameters | undefined {
-  if (resourceType !== 'Glyphs') return undefined
+  resourceType?: string,
+): mapboxgl.RequestParameters {
+  if (resourceType !== 'Glyphs') return { url }
 
   const match = url.match(/^(.+\/fonts\/v1\/[^/]+\/)([^/]+)(\/\d+-\d+\.pbf.*)$/)
-  if (!match) return undefined
+  if (!match) return { url }
 
   const encodedStack = match[2]
   const fonts = decodeURIComponent(encodedStack).split(',').map(f => f.trim())
@@ -134,7 +134,7 @@ export function transformRequestFonts(
   const standard = fonts.filter(f => STANDARD_FONT_PREFIXES.some(p => f.startsWith(p)))
   const resolved = standard.length > 0 ? standard : FALLBACK_FONTS
 
-  if (resolved.join(',') === fonts.join(',')) return undefined
+  if (resolved.join(',') === fonts.join(',')) return { url }
 
   const resolvedEncoded = resolved.map(f => encodeURIComponent(f)).join(',')
   return { url: match[1] + resolvedEncoded + match[3] }

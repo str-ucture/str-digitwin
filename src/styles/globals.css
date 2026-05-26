@@ -71,22 +71,29 @@
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* Sidebar scrollbar */
-.sidebar-scroll {
+/* Global scrollbar style (default for all scroll containers) */
+* {
   scrollbar-width: thin;
   scrollbar-color: theme('colors.gray.300') transparent;
 }
 
-.sidebar-scroll::-webkit-scrollbar {
+*::-webkit-scrollbar {
   width: 4px;
+  height: 4px;
 }
 
-.sidebar-scroll::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.sidebar-scroll::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   @apply bg-gray-300 rounded-full;
+}
+
+/* Backward-compatible utility class */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.gray.300') transparent;
 }
 
 /* Ensure internal Mapbox controls (zoom, compass, telemetry) float above project markers */

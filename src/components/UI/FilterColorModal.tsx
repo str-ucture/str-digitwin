@@ -3,19 +3,25 @@ import { createPortal } from 'react-dom'
 
 interface ColorRowProps {
   label: string
+  displayLabel: string
   color: string
   onChange: (hex: string) => void
+  onRename: (next: string) => void
+  onResetName: () => void
 }
 
 function isValidHex(s: string) {
   return /^#[0-9a-fA-F]{6}$/.test(s)
 }
 
-function ColorRow({ label, color, onChange }: ColorRowProps) {
+function ColorRow({ label, displayLabel, color, onChange, onRename, onResetName }: ColorRowProps) {
   const [hex, setHex] = useState(color)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState(displayLabel)
   const colorInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setHex(color) }, [color])
+  useEffect(() => { setNameDraft(displayLabel) }, [displayLabel])
 
   function commitHex(raw: string) {
     const v = raw.startsWith('#') ? raw : `#${raw}`
@@ -38,7 +44,63 @@ function ColorRow({ label, color, onChange }: ColorRowProps) {
         className="sr-only"
         onChange={e => { setHex(e.target.value); onChange(e.target.value) }}
       />
-      <span className="flex-1 text-xs text-gray-700 truncate font-medium" title={label}>{label}</span>
+      <div className="flex-1 min-w-0">
+        {!isEditingName ? (
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="text-xs text-gray-700 truncate font-medium" title={displayLabel}>{displayLabel}</span>
+            <button
+              type="button"
+              onClick={() => setIsEditingName(true)}
+              className="text-[10px] px-1.5 py-0.5 rounded border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 flex-shrink-0"
+              title="Rename"
+            >
+              Edit
+            </button>
+            {displayLabel !== label && (
+              <button
+                type="button"
+                onClick={onResetName}
+                className="w-5 h-5 rounded border border-gray-200 text-gray-500 hover:text-gray-700 hover:bg-gray-50 flex items-center justify-center flex-shrink-0"
+                title="Reset name"
+              >
+                ↺
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 min-w-0">
+            <input
+              type="text"
+              value={nameDraft}
+              onChange={e => setNameDraft(e.target.value)}
+              className="flex-1 min-w-0 text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const trimmed = nameDraft.trim()
+                if (trimmed.length > 0) onRename(trimmed)
+                setIsEditingName(false)
+              }}
+              className="w-5 h-5 rounded border border-emerald-200 text-emerald-600 hover:bg-emerald-50 flex items-center justify-center flex-shrink-0"
+              title="Accept"
+            >
+              ✓
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setNameDraft(displayLabel)
+                setIsEditingName(false)
+              }}
+              className="w-5 h-5 rounded border border-red-200 text-red-500 hover:bg-red-50 flex items-center justify-center flex-shrink-0"
+              title="Discard"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
       <input
         type="text"
         value={hex}
@@ -62,7 +124,8 @@ interface Props {
   title: string
   values: string[]
   colorMap: Record<string, string>
-  onApply: (map: Record<string, string>) => void
+  labelMap: Record<string, string>
+  onApply: (map: Record<string, string>, labels: Record<string, string>) => void
   onClose: () => void
 }
 
@@ -71,12 +134,17 @@ const DEFAULT_PALETTE = [
   '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6366f1',
 ]
 
-export default function FilterColorModal({ title, values, colorMap, onApply, onClose }: Props) {
+export default function FilterColorModal({ title, values, colorMap, labelMap, onApply, onClose }: Props) {
   const [draft, setDraft] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {}
     values.forEach((v, i) => {
       init[v] = colorMap[v] ?? DEFAULT_PALETTE[i % DEFAULT_PALETTE.length]
     })
+    return init
+  })
+  const [draftLabels, setDraftLabels] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {}
+    values.forEach(v => { init[v] = labelMap[v] ?? v })
     return init
   })
 
@@ -88,10 +156,13 @@ export default function FilterColorModal({ title, values, colorMap, onApply, onC
     const reset: Record<string, string> = {}
     values.forEach((v, i) => { reset[v] = DEFAULT_PALETTE[i % DEFAULT_PALETTE.length] })
     setDraft(reset)
+    const resetLabels: Record<string, string> = {}
+    values.forEach(v => { resetLabels[v] = v })
+    setDraftLabels(resetLabels)
   }
 
   function handleApply() {
-    onApply(draft)
+    onApply(draft, draftLabels)
   }
 
   return createPortal(
@@ -132,8 +203,11 @@ export default function FilterColorModal({ title, values, colorMap, onApply, onC
               <ColorRow
                 key={v}
                 label={v}
+                displayLabel={draftLabels[v] ?? v}
                 color={draft[v] ?? '#cccccc'}
                 onChange={hex => setColor(v, hex)}
+                onRename={next => setDraftLabels(prev => ({ ...prev, [v]: next }))}
+                onResetName={() => setDraftLabels(prev => ({ ...prev, [v]: v }))}
               />
             ))
           )}

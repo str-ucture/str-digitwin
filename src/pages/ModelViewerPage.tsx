@@ -13,6 +13,7 @@ import FilterColorModal from '../components/UI/FilterColorModal'
 import ConfirmDialog from '../components/Admin/ConfirmDialog'
 import { convertFileToGLB, needsConversion } from '../components/ModelProcessor/convertToGLB'
 import type { SceneMetadata, FileInfo } from '../components/ModelProcessor/types'
+import { BUTTON_STYLES, INPUT_STYLES, PANEL_STYLES, TYPOGRAPHY_STYLES, TAB_STYLES, TABLE_STYLES } from '../styles/designSystem'
 
 export interface SceneItemNode {
   uuid: string
@@ -32,6 +33,26 @@ type VirtualRow =
   | { kind: 'expanded'; item: SceneItemNode }
 
 type ConversionState = 'idle' | 'converting' | 'done' | 'error'
+type ValueOrientation = 'horizontal' | 'vertical'
+
+type DiagramSettings = {
+  showLegend: boolean
+  bar: {
+    showValueLabels: boolean
+    valueOrientation: ValueOrientation
+    gapScale: number
+    barWidthScale: number
+  }
+  horizontal: {
+    showValueLabels: boolean
+    labelWidthPx: number
+    rowHeightPx: number
+  }
+  donut: {
+    showCenterTotal: boolean
+    ringThickness: number
+  }
+}
 
 export function getAbsoluteUuid(node: THREE.Object3D): string {
   const userData = node.userData || {}
@@ -112,6 +133,24 @@ export function getMeshVolume(mesh: THREE.Mesh): number {
 }
 
 export default function ModelViewerPage() {
+  const defaultDiagramSettings: DiagramSettings = {
+    showLegend: true,
+    bar: {
+      showValueLabels: true,
+      valueOrientation: 'horizontal',
+      gapScale: 0.8,
+      barWidthScale: 1,
+    },
+    horizontal: {
+      showValueLabels: true,
+      labelWidthPx: 112,
+      rowHeightPx: 32,
+    },
+    donut: {
+      showCenterTotal: true,
+      ringThickness: 20,
+    },
+  }
 
   const [inputFile, setInputFile] = useState<File | null>(null)
   const [convertedBuffer, setConvertedBuffer] = useState<ArrayBuffer | null>(null)
@@ -178,6 +217,12 @@ export default function ModelViewerPage() {
   const [includeEmpty, setIncludeEmpty] = useState<boolean>(false)
   const [includeUnmapped, setIncludeUnmapped] = useState<boolean>(false)
   const [chartType, setChartType] = useState<'bar' | 'horizontal' | 'donut'>('bar')
+  const [diagramSettings, setDiagramSettings] = useState<DiagramSettings>(defaultDiagramSettings)
+  const [pendingDiagramSettings, setPendingDiagramSettings] = useState<DiagramSettings>(defaultDiagramSettings)
+  const [diagramSettingsOpen, setDiagramSettingsOpen] = useState(false)
+  const [isDiagramControlsCollapsed, setIsDiagramControlsCollapsed] = useState(false)
+  const [diagramSideTab, setDiagramSideTab] = useState<'legend' | 'controls'>('legend')
+  const [isInspectorControlsCollapsed, setIsInspectorControlsCollapsed] = useState(false)
 
   function handleSelectNode(uuid: string | null) {
     if (uuid === null) {
@@ -218,6 +263,9 @@ export default function ModelViewerPage() {
   const [typeColorMap, setTypeColorMap] = useState<Record<string, string>>({})
   const [materialColorMap, setMaterialColorMap] = useState<Record<string, string>>({})
   const [categoryColorMap, setCategoryColorMap] = useState<Record<string, string>>({})
+  const [typeLabelMap, setTypeLabelMap] = useState<Record<string, string>>({})
+  const [materialLabelMap, setMaterialLabelMap] = useState<Record<string, string>>({})
+  const [categoryLabelMap, setCategoryLabelMap] = useState<Record<string, string>>({})
   // Which filter row's color modal is open: null = closed
   type ColorModalTarget = 'type' | 'material' | 'category' | null
   const [colorModalTarget, setColorModalTarget] = useState<ColorModalTarget>(null)
@@ -225,6 +273,11 @@ export default function ModelViewerPage() {
 
   const hasExcelData = Object.keys(excelData).length > 0
   const displayedCols = visibleExcelColumns
+  const getDisplayLabel = (field: 'type' | 'materialName' | 'category', raw: string) => {
+    if (field === 'type') return typeLabelMap[raw] || raw
+    if (field === 'materialName') return materialLabelMap[raw] || raw
+    return categoryLabelMap[raw] || raw
+  }
 
   // minmax() prevents fr columns from collapsing when Excel cols push past container width
   const EXCEL_COL_W = 120
@@ -1008,16 +1061,16 @@ export default function ModelViewerPage() {
         {/* Left panel */}
         <div className="xl:col-span-5 flex flex-col gap-4 min-h-0 overflow-hidden pr-1">
           <div className="flex items-center justify-between flex-shrink-0 h-7">
-            <h2 className="text-sm font-semibold text-gray-700">Source</h2>
+            <h2 className={TYPOGRAPHY_STYLES.sectionHeader}>Source</h2>
             {inputFile && (
               <div className="flex items-center gap-2">
-                <button onClick={() => setDeleteConfirmTarget('model')} className="text-xs text-brand-600 hover:text-brand-700 font-medium">
+                <button onClick={() => setDeleteConfirmTarget('model')} className="text-xs text-brand-600 hover:text-brand-700 font-semibold transition-colors">
                   Upload different file
                 </button>
                 <span className="text-gray-300 text-xs">|</span>
                 <button
                   onClick={() => setDeleteConfirmTarget('model')}
-                  className="w-6 h-6 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 flex items-center justify-center transition-colors"
+                  className={BUTTON_STYLES.iconDestructive + " !p-1.5 !w-6 !h-6 flex items-center justify-center"}
                   title="Unload model file"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -1273,14 +1326,37 @@ export default function ModelViewerPage() {
         {/* Right panel: Node Inspector Table */}
         <div className="xl:col-span-7 flex flex-col gap-4 min-h-0 overflow-hidden">
           <div className="flex items-center justify-between flex-shrink-0 h-7">
-            <h2 className="text-sm font-semibold text-gray-700">Node Inspector</h2>
+            <h2 className={TYPOGRAPHY_STYLES.sectionHeader}>Node Inspector</h2>
           </div>
           
           {/* Top Component: Controls & Filters Box */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm flex-shrink-0">
+            <div
+              className="px-6 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer select-none"
+              onClick={() => setIsInspectorControlsCollapsed(prev => !prev)}
+            >
+              <div className="flex items-center gap-2">
+                <span className={TYPOGRAPHY_STYLES.sectionHeader + ' !text-xs'}>Data Overlay & File Metadata Filters</span>
+              </div>
+              <button
+                type="button"
+                className="w-5 h-5 text-gray-400 hover:text-gray-600 flex items-center justify-center transition-colors"
+              >
+                <svg
+                  className={`w-3.5 h-3.5 transform transition-transform duration-200 ${isInspectorControlsCollapsed ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                </svg>
+              </button>
+            </div>
+            {!isInspectorControlsCollapsed && (
             <div className="px-6 py-4 flex flex-col gap-3">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                <div className="flex items-center gap-2 overflow-auto max-h-24 pb-1 sm:pb-0">
                   <button
                     onClick={() => setColorModalTarget('type')}
                     className="w-5 h-5 flex-shrink-0 flex items-center justify-center rounded text-gray-300 hover:text-brand-500 hover:bg-brand-50 transition-colors"
@@ -1290,18 +1366,15 @@ export default function ModelViewerPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z" />
                     </svg>
                   </button>
-                  <span className="text-xs font-semibold text-gray-500 mr-1">Taxonomy</span>
+                  <span className={TYPOGRAPHY_STYLES.label + ' mr-1'}>Taxonomy</span>
                   {availableTypes.map(t => (
                     <button
                       key={t}
                       onClick={() => setSelectedType(t)}
-                      className={`px-2.5 py-0.5 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap ${
-                        selectedType === t
-                          ? 'bg-brand-50 text-brand-700 border border-brand-200 font-semibold'
-                          : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200/40 hover:border-gray-250'
-                      }`}
+                      className={selectedType === t ? TAB_STYLES.filterActive : TAB_STYLES.filterInactive}
+                      title={t === 'all' ? 'All' : t}
                     >
-                      {t === 'all' ? 'All' : t}
+                      {t === 'all' ? 'All' : getDisplayLabel('type', t)}
                     </button>
                   ))}
                 </div>
@@ -1312,16 +1385,14 @@ export default function ModelViewerPage() {
                       <button
                         onClick={handleExportGLBWithUUIDs}
                         disabled={isExportingGLB}
-                        className={`px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 border border-blue-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0 ${
-                          isExportingGLB ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
-                        }`}
-                        title="Inject permanent random UUIDs into all nodes and export as a new GLB"
+                        className={BUTTON_STYLES.info + " " + (isExportingGLB ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer')}
+                        title="Download GLB with stable UUIDs embedded on each node"
                       >
                         {isExportingGLB ? (
                           <>
-                            <svg className="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-blue-700" fill="none" viewBox="0 0 24 24">
+                            <svg className="animate-spin -ml-1 mr-1 h-3.5 w-3.5 text-blue-750" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
                             </svg>
                             <span>Exporting...</span>
                           </>
@@ -1330,20 +1401,20 @@ export default function ModelViewerPage() {
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                             </svg>
-                            <span>Export GLB with UUID</span>
+                            <span>GLB</span>
                           </>
                         )}
                       </button>
 
                       <button
                         onClick={handleExportCSV}
-                        className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-800 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm shrink-0"
-                        title="Export currently filtered table as CSV"
+                        className={BUTTON_STYLES.successSubtle}
+                        title="Download the currently filtered node table as CSV"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
-                        <span>Export CSV</span>
+                        <span>CSV</span>
                       </button>
                     </>
                   )}
@@ -1357,7 +1428,7 @@ export default function ModelViewerPage() {
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                       placeholder="Search UUID, name, custom data..."
-                      className={`w-full pl-9 pr-4 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition-all ${isSearchStale ? 'opacity-70' : ''}`}
+                      className={INPUT_STYLES.search + " !py-1.5 !text-xs !bg-gray-50 hover:!bg-white focus:!bg-white " + (isSearchStale ? 'opacity-70' : '')}
                       disabled={items.length === 0}
                     />
                     {searchQuery && (
@@ -1374,7 +1445,7 @@ export default function ModelViewerPage() {
 
               {/* Material selector row */}
               {availableMaterials.length > 2 && (
-                <div className="flex items-center gap-2 overflow-x-auto pt-1 border-t border-gray-50/80">
+                <div className="flex items-center gap-2 overflow-auto max-h-24 pt-1 border-t border-gray-50/80">
                   <button
                     onClick={() => setColorModalTarget('material')}
                     className="w-5 h-5 flex-shrink-0 flex items-center justify-center rounded text-gray-300 hover:text-brand-500 hover:bg-brand-50 transition-colors"
@@ -1384,7 +1455,7 @@ export default function ModelViewerPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z" />
                     </svg>
                   </button>
-                  <span className="text-xs font-semibold text-gray-500 mr-1">Material</span>
+                  <span className={TYPOGRAPHY_STYLES.label + ' mr-1'}>Material</span>
                   {availableMaterials.map(m => {
                     const isActive = m === 'all'
                       ? selectedMaterials.length === 0
@@ -1393,14 +1464,10 @@ export default function ModelViewerPage() {
                       <button
                         key={m}
                         onClick={() => handleToggleMaterial(m)}
-                        className={`px-2.5 py-0.5 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap max-w-[150px] truncate ${
-                          isActive
-                            ? 'bg-brand-50 text-brand-700 border border-brand-200 font-semibold'
-                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200/40 hover:border-gray-250'
-                        }`}
-                        title={m === 'all' ? 'All Materials' : m}
+                        className={isActive ? TAB_STYLES.filterActive : TAB_STYLES.filterInactive}
+                        title={m === 'all' ? 'All Materials' : getDisplayLabel('materialName', m)}
                       >
-                        {m === 'all' ? 'All' : m}
+                        {m === 'all' ? 'All' : getDisplayLabel('materialName', m)}
                       </button>
                     )
                   })}
@@ -1417,7 +1484,7 @@ export default function ModelViewerPage() {
 
               {/* Category filter row */}
               {availableCategories.length > 1 && (
-                <div className="flex items-center gap-2 overflow-x-auto pt-1 border-t border-gray-50/80 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2 overflow-auto max-h-24 pt-1 border-t border-gray-50/80 animate-in fade-in duration-200">
                   <button
                     onClick={() => setColorModalTarget('category')}
                     className="w-5 h-5 flex-shrink-0 flex items-center justify-center rounded text-gray-300 hover:text-brand-500 hover:bg-brand-50 transition-colors"
@@ -1427,7 +1494,7 @@ export default function ModelViewerPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z" />
                     </svg>
                   </button>
-                  <span className="text-xs font-semibold text-gray-500 mr-1 shrink-0">{categoryColumn || 'Category'}</span>
+                  <span className={TYPOGRAPHY_STYLES.label + ' mr-1 shrink-0'}>{categoryColumn || 'Category'}</span>
                   {availableCategories.map(c => {
                     const isActive = c === 'all'
                       ? selectedCategories.length === 0
@@ -1436,14 +1503,10 @@ export default function ModelViewerPage() {
                       <button
                         key={c}
                         onClick={() => handleToggleCategory(c)}
-                        className={`px-2.5 py-0.5 text-[11px] font-medium rounded-md transition-colors whitespace-nowrap max-w-[150px] truncate ${
-                          isActive
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
-                            : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200/40 hover:border-gray-250'
-                        }`}
-                        title={c === 'all' ? 'All' : c}
+                        className={isActive ? TAB_STYLES.filterActiveEmerald : TAB_STYLES.filterInactive}
+                        title={c === 'all' ? 'All' : getDisplayLabel('category', c)}
                       >
-                        {c === 'all' ? 'All' : c}
+                        {c === 'all' ? 'All' : getDisplayLabel('category', c)}
                       </button>
                     )
                   })}
@@ -1466,7 +1529,7 @@ export default function ModelViewerPage() {
                     <select
                       value={selectedAnimation ?? ''}
                       onChange={e => setSelectedAnimation(e.target.value || null)}
-                      className="appearance-none pl-3 pr-7 py-1 text-[11px] font-medium rounded-md bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-colors cursor-pointer max-w-[220px]"
+                      className={INPUT_STYLES.textDense + " !appearance-none !pl-3 !pr-7 !py-1 hover:!bg-gray-100 cursor-pointer !max-w-[220px]"}
                     >
                       <option value="">None</option>
                       {animationNames.map(name => (
@@ -1494,6 +1557,7 @@ export default function ModelViewerPage() {
                 </div>
               )}
             </div>
+            )}
           </div>
 
           {/* Second Component: Table & Scene Graph Contents Box */}
@@ -1504,107 +1568,20 @@ export default function ModelViewerPage() {
                   <div className="flex gap-4">
                     <button
                       onClick={() => setInspectorTab('table')}
-                      className={`py-2 px-1 text-xs font-semibold border-b-2 transition-all relative ${
-                        inspectorTab === 'table'
-                          ? 'border-brand-500 text-brand-700'
-                          : 'border-transparent text-gray-400 hover:text-gray-600'
-                      }`}
+                      className={inspectorTab === 'table' ? TAB_STYLES.underlineActive : TAB_STYLES.underlineInactive}
                     >
                       Table
                     </button>
                     <button
                       onClick={() => setInspectorTab('analytics')}
-                      className={`py-2 px-1 text-xs font-semibold border-b-2 transition-all relative ${
-                        inspectorTab === 'analytics'
-                          ? 'border-brand-500 text-brand-700'
-                          : 'border-transparent text-gray-400 hover:text-gray-600'
-                      }`}
+                      className={inspectorTab === 'analytics' ? TAB_STYLES.underlineActive : TAB_STYLES.underlineInactive}
                     >
                       Diagram
                     </button>
                   </div>
 
-                  {inspectorTab === 'analytics' && (
-                    <div className="flex items-center gap-4 animate-in fade-in duration-200">
-                      {/* Toggle 1: Include Empty */}
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-bold text-gray-500 hover:text-gray-700 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={includeEmpty}
-                          onChange={e => setIncludeEmpty(e.target.checked)}
-                          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 w-3.5 h-3.5 cursor-pointer accent-brand-500"
-                        />
-                        <span>Empty</span>
-                      </label>
-
-                      {/* Toggle 2: Include Unmapped */}
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-bold text-gray-500 hover:text-gray-700 transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={includeUnmapped}
-                          onChange={e => setIncludeUnmapped(e.target.checked)}
-                          className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 w-3.5 h-3.5 cursor-pointer accent-brand-500"
-                        />
-                        <span>Unmapped</span>
-                      </label>
-
-                      <div className="w-px h-3.5 bg-gray-200 mx-1 flex-shrink-0" />
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Diagram:</span>
-                        <select
-                          value={diagramMode}
-                          onChange={e => setDiagramMode(e.target.value as any)}
-                          className="pl-2 pr-6 py-1 text-xs bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer text-gray-700 font-medium"
-                        >
-                          <option value="count">Distribution</option>
-                          <option value="volume">Volume Distribution</option>
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Group By:</span>
-                        <select
-                          value={groupByField}
-                          onChange={e => setGroupByField(e.target.value as any)}
-                          className="pl-2 pr-6 py-1 text-xs bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer text-gray-700 font-medium max-w-[200px] truncate"
-                        >
-                          <option value="type">Taxonomy (Type)</option>
-                          <option value="materialName">Material Binding</option>
-                          {hasExcelData && <option value="category">{categoryColumn || 'Excel Category'}</option>}
-                        </select>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Type:</span>
-                        <select
-                          value={chartType}
-                          onChange={e => setChartType(e.target.value as any)}
-                          className="pl-2 pr-6 py-1 text-xs bg-white border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 cursor-pointer text-gray-700 font-medium"
-                        >
-                          <option value="bar">Bar (Vertical)</option>
-                          <option value="horizontal">Bar (Horizontal)</option>
-                          <option value="donut">Donut Ring</option>
-                        </select>
-                      </div>
-                    </div>
-                  )}
+                  {inspectorTab === 'analytics' && <div />}
                 </div>
-
-                {inspectorTab === 'analytics' && (
-                  <div className="flex items-center justify-end border-t border-gray-100/60 pt-1.5 animate-in fade-in duration-200">
-                    {/* Toggle: Auto Zoom */}
-                    <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-bold text-gray-500 hover:text-gray-700 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={autoZoom}
-                        onChange={e => setAutoZoom(e.target.checked)}
-                        className="rounded-full border-gray-300 text-brand-600 focus:ring-brand-500 w-3.5 h-3.5 cursor-pointer accent-brand-500"
-                      />
-                      <span>Auto Zoom</span>
-                    </label>
-                  </div>
-                )}
               </div>
             )}
 
@@ -1755,11 +1732,17 @@ export default function ModelViewerPage() {
                   }
 
                   const anyGroupSelected = chartData.some(c => hasSomeGroupActive(c.name))
+                  const barCount = Math.max(chartData.length, 1)
+                  const barGapPx = (barCount > 28 ? 2 : barCount > 18 ? 3 : 4) * diagramSettings.bar.gapScale
+                  const compactLabels = barCount > 16
+                  const compactValues = barCount > 24
+                  const baseBarWidthPct = barCount > 40 ? 48 : barCount > 30 ? 58 : barCount > 20 ? 70 : barCount > 12 ? 82 : 100
+                  const barWidthPct = Math.max(28, Math.min(100, baseBarWidthPct * diagramSettings.bar.barWidthScale))
 
                   return (
                     <div className="flex flex-row gap-6 h-full min-h-[340px] items-stretch">
                       {/* Main Chart Area */}
-                      <div className="flex bg-white rounded-2xl border border-gray-150 p-6 relative shadow-sm select-none w-[65%] flex-shrink-0">
+                      <div className="flex bg-white rounded-2xl border border-gray-150 p-6 relative shadow-sm select-none flex-shrink-0 w-[65%]">
                         {chartType === 'bar' && (
                           <div className="flex w-full h-full relative">
                             {/* Y-axis Label & Ticks */}
@@ -1789,7 +1772,10 @@ export default function ModelViewerPage() {
                               </div>
 
                               {/* Chart columns */}
-                              <div className="relative flex-1 flex items-end justify-around gap-4 pb-8 pt-2 z-10">
+                              <div
+                                className="relative flex-1 grid items-end pb-8 pt-2 z-10"
+                                style={{ gridTemplateColumns: `repeat(${barCount}, minmax(0, 1fr))`, columnGap: `${barGapPx}px` }}
+                              >
                                 {chartData.map((d, index) => {
                                   const pctHeight = (d.count / maxCount) * 100
                                   const customColor = groupByField === 'type' ? typeColorMap[d.name] : groupByField === 'materialName' ? materialColorMap[d.name] : categoryColorMap[d.name]
@@ -1803,26 +1789,29 @@ export default function ModelViewerPage() {
                                     <div 
                                       key={d.name} 
                                       onClick={() => handleChartGroupClick(d.name)}
-                                      className="flex-1 flex flex-col items-center group relative h-full justify-end min-w-[36px] max-w-[80px] cursor-pointer"
+                                      className="flex flex-col items-center group relative h-full justify-end cursor-pointer min-w-0"
                                     >
                                       {/* Dynamic Bar */}
                                       <div 
-                                        className={`w-full rounded-t-md transition-all duration-300 shadow-sm relative flex items-end justify-center origin-bottom ${opacityClass} ${activeBorderClass} ${!customColor ? 'bg-gradient-to-t ' + gradientClass : ''}`}
+                                        className={`w-full rounded-t-none transition-all duration-300 shadow-sm relative flex items-end justify-center origin-bottom ${opacityClass} ${activeBorderClass} ${!customColor ? 'bg-gradient-to-t ' + gradientClass : ''}`}
                                         style={{ 
+                                          width: `${barWidthPct}%`,
                                           height: `${Math.max(pctHeight, 6)}%`,
                                           animation: `chartGrow 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards`,
                                           backgroundColor: customColor || undefined
                                         }}
                                       >
                                         {/* Count display on top of bar */}
-                                        <span className="absolute bottom-full mb-1 text-[9px] font-bold text-gray-600 whitespace-nowrap">
-                                          {formatVal(d.count)}
-                                        </span>
+                                        {diagramSettings.bar.showValueLabels && (
+                                          <span className={`absolute bottom-full mb-1 font-bold text-gray-600 whitespace-nowrap ${compactValues ? 'text-[8px]' : 'text-[9px]'} ${diagramSettings.bar.valueOrientation === 'vertical' ? '-rotate-90 origin-bottom' : ''}`}>
+                                            {formatVal(d.count)}
+                                          </span>
+                                        )}
                                       </div>
 
                                       {/* Label */}
-                                      <div className="mt-2 text-[10px] font-semibold text-gray-500 text-center truncate w-full" title={d.name}>
-                                        {d.name}
+                                      <div className={`mt-2 font-semibold text-gray-500 text-center truncate w-full ${compactLabels ? 'text-[9px]' : 'text-[10px]'}`} title={getDisplayLabel(groupByField, d.name)}>
+                                        {getDisplayLabel(groupByField, d.name)}
                                       </div>
                                     </div>
                                   )
@@ -1847,9 +1836,9 @@ export default function ModelViewerPage() {
                               const opacityClass = anyGroupSelected && !isSelected ? 'opacity-30 grayscale-[40%]' : 'opacity-100'
                               const activeBorderClass = isSelected ? 'ring-2 ring-brand-500' : ''
                               return (
-                                <div key={d.name} onClick={() => handleChartGroupClick(d.name)} className="flex items-center w-full group cursor-pointer min-h-[32px] my-1">
+                                <div key={d.name} onClick={() => handleChartGroupClick(d.name)} className="flex items-center w-full group cursor-pointer my-1" style={{ minHeight: `${diagramSettings.horizontal.rowHeightPx}px` }}>
                                   {/* Label left */}
-                                  <div className="w-28 flex-shrink-0 text-[10px] font-semibold text-gray-600 text-right pr-3 truncate" title={d.name}>{d.name}</div>
+                                  <div className="flex-shrink-0 text-[10px] font-semibold text-gray-600 text-right pr-3 truncate" style={{ width: `${diagramSettings.horizontal.labelWidthPx}px` }} title={getDisplayLabel(groupByField, d.name)}>{getDisplayLabel(groupByField, d.name)}</div>
                                   {/* Bar container */}
                                   <div className="flex-1 h-5 relative flex items-center">
                                     <div 
@@ -1857,7 +1846,9 @@ export default function ModelViewerPage() {
                                       style={{ width: `${Math.max(pctWidth, 2)}%`, backgroundColor: customColor || undefined }}
                                     >
                                       {/* Add a subtle visual glow to the text value and position it outside the bar */}
-                                      <span className="absolute left-full ml-2 text-[9px] font-bold text-gray-600 drop-shadow-sm whitespace-nowrap">{formatVal(d.count)}</span>
+                                      {diagramSettings.horizontal.showValueLabels && (
+                                        <span className="absolute left-full ml-2 text-[9px] font-bold text-gray-600 drop-shadow-sm whitespace-nowrap">{formatVal(d.count)}</span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>
@@ -1871,12 +1862,13 @@ export default function ModelViewerPage() {
                           const R = 40;
                           const C = 2 * Math.PI * R;
                           let cumulativeCount = 0;
+                          const ringThickness = Math.max(8, Math.min(30, diagramSettings.donut.ringThickness))
                           
                           return (
                             <div className="flex w-full h-full items-center justify-center min-h-[260px] relative">
                               <svg viewBox="0 0 100 100" className="w-56 h-56 transform -rotate-90 drop-shadow-sm overflow-visible animate-in zoom-in duration-500">
                                 {/* Background ring */}
-                                <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f3f4f6" strokeWidth="20" />
+                                <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f3f4f6" strokeWidth={ringThickness} />
                                 
                                 {chartData.map((d, index) => {
                                   const fraction = d.count / (donutTotalCount || 1);
@@ -1898,68 +1890,150 @@ export default function ModelViewerPage() {
                                       r="40"
                                       fill="transparent"
                                       stroke={hexColor}
-                                      strokeWidth={isSelected ? "23" : "20"}
+                                      strokeWidth={isSelected ? `${ringThickness + 3}` : `${ringThickness}`}
                                       strokeDasharray={`${sliceLength} ${C}`}
                                       strokeDashoffset={-dashOffset}
                                       className={`cursor-pointer transition-all duration-300 origin-center ${opacityClass}`}
                                       onClick={() => handleChartGroupClick(d.name)}
                                     >
-                                      <title>{d.name}: {formatVal(d.count)}</title>
+                                      <title>{getDisplayLabel(groupByField, d.name)}: {formatVal(d.count)}</title>
                                     </circle>
                                   )
                                 })}
                               </svg>
 
                               {/* Center Label */}
-                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <div className="flex flex-col items-center justify-center bg-white rounded-full w-28 h-28 shadow-sm">
-                                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</span>
-                                  <span className="text-2xl font-black text-gray-700 truncate max-w-[100px]" title={formatVal(donutTotalCount)}>
-                                    {isVol ? `${donutTotalCount.toLocaleString(undefined, { maximumFractionDigits: 2 })} m³` : donutTotalCount}
-                                  </span>
+                              {diagramSettings.donut.showCenterTotal && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="flex flex-col items-center justify-center bg-white rounded-full w-28 h-28 shadow-sm">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</span>
+                                    <span className="text-2xl font-black text-gray-700 truncate max-w-[100px]" title={formatVal(donutTotalCount)}>
+                                      {isVol ? `${donutTotalCount.toLocaleString(undefined, { maximumFractionDigits: 2 })} m³` : donutTotalCount}
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                             </div>
                           )
                         })()}
                       </div>
 
-                      {/* Chart Legend Card */}
-                      <div className="flex-1 bg-white rounded-2xl border border-gray-150 p-5 shadow-sm select-none overflow-y-auto">
-                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-3">
-                          Chart Legend & Distribution
-                        </h4>
-                        <div className="flex flex-col gap-3">
-                          {chartData.map((d, idx) => {
-                            const totalVal = isVol ? chartData.reduce((acc, c) => acc + c.count, 0) : chartFilteredItems.length
-                            const pctTotal = totalVal > 0 ? ((d.count / totalVal) * 100).toFixed(1) : '0.0'
-                            
-                            const customColor = groupByField === 'type' ? typeColorMap[d.name] : groupByField === 'materialName' ? materialColorMap[d.name] : categoryColorMap[d.name]
-                            const dotColor = customColor ? '' : legendColors[idx % legendColors.length]
-                            
-                            const isSelected = hasSomeGroupActive(d.name)
-                            const opacityClass = anyGroupSelected && !isSelected ? 'opacity-40' : 'opacity-100'
-                            const borderClass = isSelected ? 'border-brand-500 bg-brand-50/20 shadow-sm' : 'border-gray-100 bg-gray-50/50 hover:bg-gray-50'
-
-                            return (
-                              <div 
-                                key={d.name} 
-                                onClick={() => handleChartGroupClick(d.name)}
-                                className={`flex items-center gap-2 px-3 py-2 border rounded-xl transition-all min-w-0 cursor-pointer ${borderClass} ${opacityClass}`}
-                              >
-                                <span className={`w-2 h-2 rounded-full ${dotColor} flex-shrink-0`} style={{ backgroundColor: customColor || undefined }} />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[10px] font-semibold text-gray-700 truncate" title={d.name}>
-                                    {d.name}
-                                  </p>
-                                  <p className="text-[9px] font-bold text-gray-400 mt-0.5">
-                                    {formatVal(d.count)} <span className="font-normal font-sans">({pctTotal}%)</span>
-                                  </p>
-                                </div>
+                      <div className="flex-1 min-h-0 min-w-0 relative">
+                        <div className="h-full bg-white rounded-2xl border border-gray-150 p-5 shadow-sm select-none overflow-y-auto overflow-x-hidden pr-12 min-w-0">
+                          {diagramSideTab === 'controls' && (
+                            <div>
+                              <div className="flex items-center justify-between cursor-pointer select-none" onClick={() => setIsDiagramControlsCollapsed(prev => !prev)}>
+                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Diagram Controls</h4>
                               </div>
-                            )
-                          })}
+                              {!isDiagramControlsCollapsed && (
+                                <div className="mt-3 space-y-3">
+                                  <div className="flex items-center gap-4 flex-wrap">
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-bold text-gray-500"><input type="checkbox" checked={includeEmpty} onChange={e => setIncludeEmpty(e.target.checked)} className="rounded border-gray-300 text-brand-600 w-3.5 h-3.5 cursor-pointer accent-brand-500" /><span>Empty</span></label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-bold text-gray-500"><input type="checkbox" checked={includeUnmapped} onChange={e => setIncludeUnmapped(e.target.checked)} className="rounded border-gray-300 text-brand-600 w-3.5 h-3.5 cursor-pointer accent-brand-500" /><span>Unmapped</span></label>
+                                    <label className="flex items-center gap-1.5 cursor-pointer select-none text-[10px] font-bold text-gray-500"><input type="checkbox" checked={autoZoom} onChange={e => setAutoZoom(e.target.checked)} className="rounded border-gray-300 text-brand-600 w-3.5 h-3.5 cursor-pointer accent-brand-500" /><span>Auto Zoom</span></label>
+                                  </div>
+                                  <div className="grid grid-cols-1 gap-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Diagram</span>
+                                      <select value={diagramMode} onChange={e => setDiagramMode(e.target.value as any)} className={INPUT_STYLES.textDense + " !w-44 hover:!bg-gray-50 cursor-pointer"}>
+                                        <option value="count">Distribution</option>
+                                        <option value="volume">Volume Distribution</option>
+                                      </select>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Group By</span>
+                                      <select value={groupByField} onChange={e => setGroupByField(e.target.value as any)} className={INPUT_STYLES.textDense + " !w-44 hover:!bg-gray-50 cursor-pointer truncate"}>
+                                        <option value="type">Taxonomy (Type)</option>
+                                        <option value="materialName">Material Binding</option>
+                                        {hasExcelData && <option value="category">{categoryColumn || 'Excel Category'}</option>}
+                                      </select>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Type</span>
+                                      <select value={chartType} onChange={e => setChartType(e.target.value as any)} className={INPUT_STYLES.textDense + " !w-44 hover:!bg-gray-50 cursor-pointer"}>
+                                        <option value="bar">Bar (Vertical)</option>
+                                        <option value="horizontal">Bar (Horizontal)</option>
+                                        <option value="donut">Donut Ring</option>
+                                      </select>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        setPendingDiagramSettings({ ...diagramSettings })
+                                        setDiagramSettingsOpen(true)
+                                      }}
+                                      className={BUTTON_STYLES.secondary + " !inline-flex !items-center !justify-center !gap-1.5 !px-2.5 !py-1.5 !rounded-md !text-[11px] !font-semibold transition-colors cursor-pointer"}
+                                      title="Diagram Settings"
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      </svg>
+                                      <span>Settings</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {diagramSideTab === 'legend' && diagramSettings.showLegend && (
+                            <div>
+                              <div className="flex items-center justify-between mb-3 gap-2">
+                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Legend</h4>
+                                {selectedNodeUuids.length > 0 && (
+                                  <button onClick={() => setSelectedNodeUuids([])} className="px-2 py-1 text-[10px] font-bold text-brand-600 bg-brand-50 border border-brand-200 rounded-md transition-colors whitespace-nowrap flex-shrink-0">
+                                    Reset Selection
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex flex-col gap-3">
+                                {chartData.map((d, idx) => {
+                                  const totalVal = isVol ? chartData.reduce((acc, c) => acc + c.count, 0) : chartFilteredItems.length
+                                  const pctTotal = totalVal > 0 ? ((d.count / totalVal) * 100).toFixed(1) : '0.0'
+                                  const customColor = groupByField === 'type' ? typeColorMap[d.name] : groupByField === 'materialName' ? materialColorMap[d.name] : categoryColorMap[d.name]
+                                  const dotColor = customColor ? '' : legendColors[idx % legendColors.length]
+                                  const isSelected = hasSomeGroupActive(d.name)
+                                  const opacityClass = anyGroupSelected && !isSelected ? 'opacity-40' : 'opacity-100'
+                                  const rowClass = isSelected ? 'bg-brand-50/30' : 'hover:bg-gray-50/70'
+                                  return (
+                                    <div key={d.name} onClick={() => handleChartGroupClick(d.name)} className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md transition-colors min-w-0 cursor-pointer ${rowClass} ${opacityClass}`}>
+                                      <span className={`w-2.5 h-2.5 rounded-full ${dotColor} flex-shrink-0`} style={{ backgroundColor: customColor || undefined }} />
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-[10px] font-semibold text-gray-700 truncate" title={getDisplayLabel(groupByField, d.name)}>{getDisplayLabel(groupByField, d.name)}</p>
+                                        <p className="text-[9px] font-bold text-gray-400 mt-0.5 truncate" title={`${formatVal(d.count)} (${pctTotal}%)`}>{formatVal(d.count)} <span className="font-normal font-sans">({pctTotal}%)</span></p>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
+
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1.5 flex flex-col gap-2">
+                           <button
+                             onClick={() => setDiagramSideTab('legend')}
+                             className={`rotate-180 px-2 py-2 rounded-lg border text-[10px] font-bold tracking-wide transition-all ${
+                               diagramSideTab === 'legend'
+                                 ? 'bg-brand-50 border-brand-200 text-brand-700'
+                                 : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                             }`}
+                             style={{ writingMode: 'vertical-rl' }}
+                           >
+                             Legend
+                           </button>
+                           <button
+                             onClick={() => setDiagramSideTab('controls')}
+                             className={`rotate-180 px-2 py-2 rounded-lg border text-[10px] font-bold tracking-wide transition-all ${
+                               diagramSideTab === 'controls'
+                                 ? 'bg-brand-50 border-brand-200 text-brand-700'
+                                 : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                             }`}
+                             style={{ writingMode: 'vertical-rl' }}
+                           >
+                             Controls
+                           </button>
+                         </div>
                       </div>
                     </div>
                   )
@@ -2006,10 +2080,10 @@ export default function ModelViewerPage() {
 
                     {/* Sticky header */}
                     <div
-                      className="sticky top-0 z-10 bg-gray-100 border-b border-gray-200 text-xs font-bold text-gray-700 uppercase tracking-wide"
+                      className={"sticky top-0 z-10 " + TABLE_STYLES.headerRow}
                       style={{ display: 'grid', gridTemplateColumns: gridTemplate }}
                     >
-                      <div className="py-3 px-4 border-r border-gray-200 flex items-center">
+                      <div className={TABLE_STYLES.headerCell + " border-r border-gray-200 flex items-center"}>
                         <button
                           onClick={() => handleSort('type')}
                           className="flex items-center gap-1 hover:text-gray-900 transition-colors uppercase font-bold text-xs"
@@ -2024,7 +2098,7 @@ export default function ModelViewerPage() {
                           )}
                         </button>
                       </div>
-                      <div className="py-3 px-3 border-r border-gray-200 flex items-center">
+                      <div className={TABLE_STYLES.headerCell + " !px-3 border-r border-gray-200 flex items-center"}>
                         <button
                           onClick={() => handleSort('name')}
                           className="flex items-center gap-1 hover:text-gray-900 transition-colors uppercase font-bold text-xs"
@@ -2039,15 +2113,15 @@ export default function ModelViewerPage() {
                           )}
                         </button>
                       </div>
-                      <div className="py-3 px-3 border-r border-gray-200 flex items-center">Absolute UUID</div>
+                      <div className={TABLE_STYLES.headerCell + " !px-3 border-r border-gray-200 flex items-center"}>Absolute UUID</div>
                       {hasExcelData && displayedCols.map(col => (
-                        <div key={col} className="py-3 px-3 text-emerald-700 font-bold border-r border-gray-200 truncate flex items-center" title={col}>
+                        <div key={col} className={TABLE_STYLES.headerCell + " !px-3 !text-emerald-700 border-r border-gray-200 truncate flex items-center"} title={col}>
                           {col}
                         </div>
                       ))}
-                      <div className="py-3 px-3 text-right border-r border-gray-200 flex items-center justify-end">Vertices</div>
-                      <div className="py-3 px-3 text-right border-r border-gray-200 flex items-center justify-end">Triangles</div>
-                      <div className="py-3 px-3 border-r border-gray-200 flex items-center">
+                      <div className={TABLE_STYLES.headerCell + " !px-3 border-r border-gray-200 flex items-center justify-end"}>Vertices</div>
+                      <div className={TABLE_STYLES.headerCell + " !px-3 border-r border-gray-200 flex items-center justify-end"}>Triangles</div>
+                      <div className={TABLE_STYLES.headerCell + " !px-3 border-r border-gray-200 flex items-center"}>
                         <button
                           onClick={() => handleSort('materialName')}
                           className="flex items-center gap-1 hover:text-gray-900 transition-colors uppercase font-bold text-xs"
@@ -2062,7 +2136,7 @@ export default function ModelViewerPage() {
                           )}
                         </button>
                       </div>
-                      <div className="py-3 px-4 text-center flex items-center justify-center">UserData</div>
+                      <div className={TABLE_STYLES.headerCell + " text-center flex items-center justify-center"}>UserData</div>
                     </div>
 
                     {/* Virtual rows */}
@@ -2120,9 +2194,9 @@ export default function ModelViewerPage() {
                             data-index={vRow.index}
                             ref={rowVirtualizer.measureElement}
                             style={{ ...baseStyle, display: 'grid', gridTemplateColumns: gridTemplate }}
-                            className="hover:bg-gray-50 transition-colors group border-b border-gray-100"
+                            className={TABLE_STYLES.rowHover + " group border-b border-gray-100"}
                           >
-                            <div className="py-3 px-4 font-mono flex items-center overflow-hidden border-r border-gray-100">
+                            <div className={TABLE_STYLES.bodyCellDense + " font-mono flex items-center overflow-hidden border-r border-gray-100"}>
                               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold truncate ${
                                 item.type === 'Mesh' ? 'bg-purple-50 text-purple-700 border border-purple-100/80' :
                                 item.type === 'Group' ? 'bg-blue-50 text-blue-700 border border-blue-100/80' :
@@ -2131,10 +2205,10 @@ export default function ModelViewerPage() {
                                 {item.type}
                               </span>
                             </div>
-                            <div className="py-3 px-3 font-semibold text-gray-900 text-[11px] flex items-center overflow-hidden border-r border-gray-100" title={item.name}>
+                            <div className={TABLE_STYLES.bodyCellDense + " !px-3 font-semibold !text-gray-900 flex items-center overflow-hidden border-r border-gray-100"} title={item.name}>
                               <span className="truncate">{item.name}</span>
                             </div>
-                            <div className="py-3 px-3 font-mono text-[11px] text-gray-500 flex items-center overflow-hidden border-r border-gray-100">
+                            <div className={TABLE_STYLES.bodyCellDense + " !px-3 font-mono !text-gray-500 flex items-center overflow-hidden border-r border-gray-100"}>
                               <span className="truncate min-w-0 flex-1" title={item.uuid}>{item.uuid}</span>
                               <button
                                 onClick={(e) => {
@@ -2158,22 +2232,22 @@ export default function ModelViewerPage() {
                             {hasExcelData && displayedCols.map(col => {
                               const val = itemExcelData[col]
                               return (
-                                <div key={col} className="py-3 px-3 flex items-center overflow-hidden border-r border-gray-100">
+                                <div key={col} className={TABLE_STYLES.bodyCellDense + " !px-3 flex items-center overflow-hidden border-r border-gray-100"}>
                                   {val ? (
-                                    <span className="text-[11px] text-gray-700 truncate" title={val}>{val}</span>
+                                    <span className="truncate text-gray-700" title={val}>{val}</span>
                                   ) : (
-                                    <span className="text-gray-300 text-[11px]">—</span>
+                                    <span className="text-gray-300">—</span>
                                   )}
                                 </div>
                               )
                             })}
-                            <div className="py-3 px-3 text-right font-mono text-gray-600 text-[11px] flex items-center justify-end border-r border-gray-100">
+                            <div className={TABLE_STYLES.bodyCellDense + " !px-3 font-mono !text-gray-650 flex items-center justify-end border-r border-gray-100"}>
                               {item.vertices > 0 ? item.vertices.toLocaleString() : '—'}
                             </div>
-                            <div className="py-3 px-3 text-right font-mono text-gray-600 text-[11px] flex items-center justify-end border-r border-gray-100">
+                            <div className={TABLE_STYLES.bodyCellDense + " !px-3 font-mono !text-gray-650 flex items-center justify-end border-r border-gray-100"}>
                               {item.triangles > 0 ? item.triangles.toLocaleString() : '—'}
                             </div>
-                            <div className="py-3 px-3 text-gray-600 text-[11px] flex items-center overflow-hidden border-r border-gray-100" title={`${item.materialName} (${item.materialType})`}>
+                            <div className={TABLE_STYLES.bodyCellDense + " !px-3 flex items-center overflow-hidden border-r border-gray-100"} title={`${item.materialName} (${item.materialType})`}>
                               {item.materialName !== '-' ? (
                                 <span className="inline-flex items-center gap-1 min-w-0">
                                   <span className="w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0" />
@@ -2182,21 +2256,17 @@ export default function ModelViewerPage() {
                                 </span>
                               ) : '—'}
                             </div>
-                            <div className="py-3 px-4 flex items-center justify-center">
+                            <div className={TABLE_STYLES.bodyCellDense + " flex items-center justify-center"}>
                               {hasData ? (
                                 <button
                                   onClick={() => setExpandedUuid(isExpanded ? null : item.uuid)}
-                                  className={`text-[11px] px-2 py-0.5 rounded font-medium transition-colors inline-flex items-center gap-1 ${
-                                    isExpanded
-                                      ? 'bg-brand-50 text-brand-700 border border-brand-200'
-                                      : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200'
-                                  }`}
+                                  className={isExpanded ? TAB_STYLES.filterActive : TAB_STYLES.filterInactive}
                                 >
                                   <span>BIM Map</span>
                                   <span className="text-[9px] font-bold">{isExpanded ? '▲' : '▼'}</span>
                                 </button>
                               ) : (
-                                <span className="text-gray-300 text-[11px]">—</span>
+                                <span className="text-gray-300">—</span>
                               )}
                             </div>
                           </div>
@@ -2219,7 +2289,8 @@ export default function ModelViewerPage() {
           title="Taxonomy"
           values={availableTypes.filter(t => t !== 'all')}
           colorMap={typeColorMap}
-          onApply={map => setTypeColorMap(map)}
+          labelMap={typeLabelMap}
+          onApply={(map, labels) => { setTypeColorMap(map); setTypeLabelMap(labels) }}
           onClose={() => setColorModalTarget(null)}
         />
       )}
@@ -2228,7 +2299,8 @@ export default function ModelViewerPage() {
           title="Material"
           values={availableMaterials.filter(m => m !== 'all')}
           colorMap={materialColorMap}
-          onApply={map => setMaterialColorMap(map)}
+          labelMap={materialLabelMap}
+          onApply={(map, labels) => { setMaterialColorMap(map); setMaterialLabelMap(labels) }}
           onClose={() => setColorModalTarget(null)}
         />
       )}
@@ -2237,7 +2309,8 @@ export default function ModelViewerPage() {
           title={categoryColumn || 'Category'}
           values={availableCategories.filter(c => c !== 'all')}
           colorMap={categoryColorMap}
-          onApply={map => setCategoryColorMap(map)}
+          labelMap={categoryLabelMap}
+          onApply={(map, labels) => { setCategoryColorMap(map); setCategoryLabelMap(labels) }}
           onClose={() => setColorModalTarget(null)}
         />
       )}
@@ -2247,7 +2320,7 @@ export default function ModelViewerPage() {
         <div
           id="col-settings-popover"
           style={{ position: 'fixed', top: settingsPopoverPos.top, left: settingsPopoverPos.left, zIndex: 9999 }}
-          className="w-56 bg-white rounded-xl border border-gray-200 shadow-xl p-3"
+          className={PANEL_STYLES.card + " !shadow-xl !p-3 !w-56"}
         >
           <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Visible Columns</p>
           <div className="space-y-0.5 max-h-52 overflow-y-auto">
@@ -2280,19 +2353,19 @@ export default function ModelViewerPage() {
                   applyColumnAsCategory('', excelData)
                 }
               }}
-              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold transition-colors"
+              className={BUTTON_STYLES.success + " !px-2.5 !py-1 !text-[11px] !rounded-md"}
             >
               Apply
             </button>
             <button
               onClick={() => { setPendingColumns([...visibleExcelColumns]); setColumnSettingsOpen(false) }}
-              className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-[11px] font-medium transition-colors"
+              className={BUTTON_STYLES.secondary + " !px-2.5 !py-1 !text-[11px] !rounded-md"}
             >
               Cancel
             </button>
             <button
               onClick={() => setPendingColumns([...excelHeaders])}
-              className="px-2.5 py-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md text-[11px] transition-colors"
+              className={BUTTON_STYLES.subtle + " !px-2.5 !py-1 !text-[11px] !rounded-md"}
             >
               Reset
             </button>
@@ -2301,10 +2374,202 @@ export default function ModelViewerPage() {
         document.body
       )}
 
-      {/* Viewport Styling Modal */}
+      {/* Diagram Settings Modal */}
+      {diagramSettingsOpen && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/10 backdrop-blur-[1.5px] animate-in fade-in duration-200">
+          <div className={PANEL_STYLES.modalLarge + " !max-h-[88vh]"}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <h3 className="text-sm font-bold text-gray-800">Diagram Visualization Settings</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setPendingDiagramSettings({ ...diagramSettings })
+                  setDiagramSettingsOpen(false)
+                }}
+                className="text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 p-1 transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 sidebar-scroll">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-800">Show Legend Panel</span>
+                <input
+                  type="checkbox"
+                  checked={pendingDiagramSettings.showLegend}
+                  onChange={e => setPendingDiagramSettings(prev => ({ ...prev, showLegend: e.target.checked }))}
+                  className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer accent-brand-500"
+                />
+              </div>
+
+              {chartType === 'bar' && (
+                <div className="space-y-4 pt-2 border-t border-gray-100">
+                  <h4 className="text-[11px] uppercase tracking-wider font-black text-gray-400">Bar (Vertical)</h4>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-700">Show Value Labels</span>
+                    <input
+                      type="checkbox"
+                      checked={pendingDiagramSettings.bar.showValueLabels}
+                      onChange={e => setPendingDiagramSettings(prev => ({ ...prev, bar: { ...prev.bar, showValueLabels: e.target.checked } }))}
+                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer accent-brand-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-gray-500">Value Label Orientation</label>
+                    <select
+                      value={pendingDiagramSettings.bar.valueOrientation}
+                      onChange={e => setPendingDiagramSettings(prev => ({ ...prev, bar: { ...prev.bar, valueOrientation: e.target.value as ValueOrientation } }))}
+                      className={INPUT_STYLES.textDense + " !w-full"}
+                    >
+                      <option value="horizontal">Horizontal</option>
+                      <option value="vertical">Vertical</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-gray-500">Bar Gap Scale</label>
+                      <span className="text-[10px] font-mono text-gray-500">{pendingDiagramSettings.bar.gapScale.toFixed(2)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.4"
+                      max="1.4"
+                      step="0.05"
+                      value={pendingDiagramSettings.bar.gapScale}
+                      onChange={e => setPendingDiagramSettings(prev => ({ ...prev, bar: { ...prev.bar, gapScale: parseFloat(e.target.value) } }))}
+                      className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-gray-500">Bar Width Scale</label>
+                      <span className="text-[10px] font-mono text-gray-500">{pendingDiagramSettings.bar.barWidthScale.toFixed(2)}x</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0.55"
+                      max="1.1"
+                      step="0.05"
+                      value={pendingDiagramSettings.bar.barWidthScale}
+                      onChange={e => setPendingDiagramSettings(prev => ({ ...prev, bar: { ...prev.bar, barWidthScale: parseFloat(e.target.value) } }))}
+                      className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {chartType === 'horizontal' && (
+                <div className="space-y-4 pt-2 border-t border-gray-100">
+                  <h4 className="text-[11px] uppercase tracking-wider font-black text-gray-400">Bar (Horizontal)</h4>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-700">Show Value Labels</span>
+                    <input
+                      type="checkbox"
+                      checked={pendingDiagramSettings.horizontal.showValueLabels}
+                      onChange={e => setPendingDiagramSettings(prev => ({ ...prev, horizontal: { ...prev.horizontal, showValueLabels: e.target.checked } }))}
+                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer accent-brand-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-gray-500">Label Width (px)</label>
+                      <input
+                        type="number"
+                        min="80"
+                        max="220"
+                        step="4"
+                        value={pendingDiagramSettings.horizontal.labelWidthPx}
+                        onChange={e => setPendingDiagramSettings(prev => ({ ...prev, horizontal: { ...prev.horizontal, labelWidthPx: Math.max(80, Math.min(220, parseInt(e.target.value || '112', 10))) } }))}
+                        className={INPUT_STYLES.textDense + " !w-full"}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-gray-500">Row Height (px)</label>
+                      <input
+                        type="number"
+                        min="24"
+                        max="56"
+                        step="2"
+                        value={pendingDiagramSettings.horizontal.rowHeightPx}
+                        onChange={e => setPendingDiagramSettings(prev => ({ ...prev, horizontal: { ...prev.horizontal, rowHeightPx: Math.max(24, Math.min(56, parseInt(e.target.value || '32', 10))) } }))}
+                        className={INPUT_STYLES.textDense + " !w-full"}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {chartType === 'donut' && (
+                <div className="space-y-4 pt-2 border-t border-gray-100">
+                  <h4 className="text-[11px] uppercase tracking-wider font-black text-gray-400">Donut Ring</h4>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-700">Show Center Total</span>
+                    <input
+                      type="checkbox"
+                      checked={pendingDiagramSettings.donut.showCenterTotal}
+                      onChange={e => setPendingDiagramSettings(prev => ({ ...prev, donut: { ...prev.donut, showCenterTotal: e.target.checked } }))}
+                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer accent-brand-500"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-gray-500">Ring Thickness</label>
+                      <span className="text-[10px] font-mono text-gray-500">{pendingDiagramSettings.donut.ringThickness}px</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="8"
+                      max="30"
+                      step="1"
+                      value={pendingDiagramSettings.donut.ringThickness}
+                      onChange={e => setPendingDiagramSettings(prev => ({ ...prev, donut: { ...prev.donut, ringThickness: parseInt(e.target.value, 10) } }))}
+                      className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-brand-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
+              <button
+                onClick={() => setPendingDiagramSettings(defaultDiagramSettings)}
+                className={BUTTON_STYLES.secondary + " !px-3.5 !py-1.5 !text-[11px] !font-bold"}
+              >
+                Reset
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setPendingDiagramSettings({ ...diagramSettings })
+                    setDiagramSettingsOpen(false)
+                  }}
+                  className={BUTTON_STYLES.secondary + " !px-3.5 !py-1.5 !text-[11px] !font-bold"}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setDiagramSettings({ ...pendingDiagramSettings })
+                    setDiagramSettingsOpen(false)
+                  }}
+                  className={BUTTON_STYLES.primary + " !px-3.5 !py-1.5 !text-[11px] !font-bold !shadow-none"}
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {threeModalOpen && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/10 backdrop-blur-[1.5px] animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-gray-150 shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+          <div className={PANEL_STYLES.modalLarge + " !max-h-[90vh]"}>
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
               <div className="flex items-center gap-2">
@@ -2417,7 +2682,7 @@ export default function ModelViewerPage() {
                         max="10"
                         value={pendingThreeSettings.gridCellSize}
                         onChange={e => setPendingThreeSettings(prev => ({ ...prev, gridCellSize: parseFloat(e.target.value) || 0.5 }))}
-                        className="w-full text-xs px-2.5 py-1.5 border border-gray-250 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-400 bg-white"
+                        className={INPUT_STYLES.textDense + " !w-full focus:!ring-emerald-400"}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -2577,14 +2842,14 @@ export default function ModelViewerPage() {
                   showGroundPlane: true,
                   groundColor: '#f1f5f9',
                 })}
-                className="px-3.5 py-1.5 border border-gray-200 hover:bg-gray-100 hover:border-gray-300 text-gray-600 hover:text-gray-800 text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+                className={BUTTON_STYLES.secondary + " !px-3.5 !py-1.5 !text-[11px] !font-bold"}
               >
                 Reset Default
               </button>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setThreeModalOpen(false)}
-                  className="px-3.5 py-1.5 border border-gray-200 hover:bg-gray-100 text-gray-600 hover:text-gray-800 text-[11px] font-bold rounded-lg transition-colors cursor-pointer"
+                  className={BUTTON_STYLES.secondary + " !px-3.5 !py-1.5 !text-[11px] !font-bold"}
                 >
                   Cancel
                 </button>
@@ -2592,13 +2857,12 @@ export default function ModelViewerPage() {
                   onClick={() => {
                     setThreeSettings({ ...pendingThreeSettings })
                   }}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg shadow transition-colors cursor-pointer"
+                  className={BUTTON_STYLES.success + " !px-3.5 !py-1.5 !text-[11px] !font-bold !shadow-none"}
                 >
                   Accept & Apply
                 </button>
               </div>
             </div>
-
           </div>
         </div>
       )}

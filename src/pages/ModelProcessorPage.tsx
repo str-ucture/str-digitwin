@@ -9,6 +9,7 @@ import ProcessingOptions from '../components/ModelProcessor/ProcessingOptions'
 import { processGLB } from '../components/ModelProcessor/processModel'
 import { convertFileToGLB, needsConversion } from '../components/ModelProcessor/convertToGLB'
 import type { SceneMetadata, FileInfo, ProcessingConfig } from '../components/ModelProcessor/types'
+import { BUTTON_STYLES, TYPOGRAPHY_STYLES } from '../styles/designSystem'
 
 type ConversionState = 'idle' | 'converting' | 'done' | 'error'
 type ProcessingState = 'idle' | 'processing' | 'done' | 'error'
@@ -147,7 +148,7 @@ export default function ModelProcessorPage() {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Input</h2>
+              <h2 className={TYPOGRAPHY_STYLES.sectionHeader}>Input</h2>
               <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full font-medium">
                 GLB · glTF · OBJ · FBX · DAE
               </span>
@@ -236,7 +237,7 @@ export default function ModelProcessorPage() {
 
         {/* ── Right: OUTPUT ── */}
         <div className="flex flex-col gap-4">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Output</h2>
+          <h2 className={TYPOGRAPHY_STYLES.sectionHeader}>Output</h2>
 
           {/* Processing options */}
           <ProcessingOptions
@@ -249,7 +250,7 @@ export default function ModelProcessorPage() {
           <button
             onClick={handleProcess}
             disabled={!canProcess}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-xl hover:bg-brand-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className={BUTTON_STYLES.primary + " !py-2.5"}
           >
             {isConverting ? (
               <>
@@ -308,7 +309,7 @@ export default function ModelProcessorPage() {
               {/* Download */}
               <button
                 onClick={handleDownload}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white text-sm font-medium rounded-xl hover:bg-green-700 transition-colors"
+                className={BUTTON_STYLES.success + " !py-2.5"}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
